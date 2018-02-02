@@ -31,17 +31,17 @@ def symmetricalKL(P, Q):
 def interp(data, tag_id):
     data = data[np.where(data[:, 0] == tag_id)[0]]
     data = data[data[:, 1].argsort()]
-    time_series = data[:, 1]
-    min_interval = float("inf")
-    max_interval = -1
-    interval_list =[]
-    for i in range(1, time_series.size):
-        interval = time_series[i] - time_series[i - 1]
-        interval_list.append(interval)
-        min_interval = min([interval, min_interval])
-        max_interval = max([interval, max_interval])
-    print "average interval = ",np.mean(interval_list)
-    print "min interval = ", min_interval, " max interval = ", max_interval
+    # time_series = data[:, 1]
+    # min_interval = float("inf")
+    # max_interval = -1
+    # interval_list =[]
+    # for i in range(1, time_series.size):
+    #     interval = time_series[i] - time_series[i - 1]
+    #     interval_list.append(interval)
+    #     min_interval = min([interval, min_interval])
+    #     max_interval = max([interval, max_interval])
+    # print "average interval = ",np.mean(interval_list)
+    # print "min interval = ", min_interval, " max interval = ", max_interval
     data[:, 3] = unwrap(data[:, 3])
 
     x = data[:, 1] / 1000

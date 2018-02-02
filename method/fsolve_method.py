@@ -10,7 +10,7 @@ import scipy as sp
 from Phase_Fsolve import *
 import matplotlib.pyplot as  plt
 
-filepath = unicode("../data/active_U2.csv", "utf8")
+filepath = unicode("../data/active_U1.csv", "utf8")
 
 frequency = 920.625e6
 wavelength = 3e8 / frequency * 100
@@ -37,7 +37,7 @@ def get_d_delta_by_phase_delta(phase_delta):
     return result
 
 
-# 不进行插值 直接使用读得的相位值 [时间，相位] win_size窗口大小
+# 不进行插值 直接使用读得的相位值 [时间，相位] win_size窗口大小 win_size 必须大于最大时间间隔 保证每个窗口里都有值
 def get_window_mean_phase(data, win_size=100):
     result = []
     shape = data.shape
@@ -65,16 +65,25 @@ def get_window_mean_phase(data, win_size=100):
     return result
 
 
+# 预处理
+def preprocess(data, tag_id):
+    # 首先unwrap相位
+    data = data[np.where(data[:, 0] == tag_id)[0]]
+    data = data[data[:, 1].argsort()]
+    data[:, 1] = data[:, 1] / 1000
+    data[:, 3] = np.unwrap(data[:, 3])
+    return data[:, (1, 3)]
+
+
 def main():
     init_config(18.5 / 2)
     data = FileReader.read_file(filepath)
+
+    tag0_data = preprocess(data, 1006)
+    first__win_y = get_window_mean_phase(tag0_data)
+    tag1_data = preprocess(data, 1005)
+    second_win_y = get_window_mean_phase(tag1_data)
     # 间距为10ms
-    first_y = FDUtils.interp(data, 1005)
-    ImageUtils.draw_scatter_diagram(range(first_y.size), first_y)
-    first__win_y = get_window_data(first_y, 30)
-    second_y = FDUtils.interp(data, 1005)
-    ImageUtils.draw_scatter_diagram(range(second_y.size), second_y)
-    second_win_y = get_window_data(second_y, 30)
     d_delta_list = []
     for i in range(3, min([second_win_y.__len__(), first__win_y.__len__()])):
         phase_deltas = [[first__win_y[i - 2] - first__win_y[i - 3], second_win_y[i - 2] - second_win_y[i - 3]],
@@ -91,10 +100,7 @@ def main():
     # 画图
     pos_list = np.array(pos_list)
     plt.figure()
-    plt.scatter(range(pos_list[:, 0].size), pos_list[:, 0])
-    plt.legend()
-    plt.figure()
-    plt.scatter(range(pos_list[:, 1].size), pos_list[:, 1])
+    plt.scatter(pos_list[:, 0], pos_list[:, 1])
     plt.legend()
     plt.show()
     return

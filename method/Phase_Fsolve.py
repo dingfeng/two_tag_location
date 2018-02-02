@@ -54,7 +54,7 @@ def get_point(param_d):
             f_results.append(norm(np.array(f(result)), ord=1))
     if results.__len__() > 0:
         sorted_result = np.array(results)[np.argsort(np.array(f_results))]
-        sorted_result =  sorted_result[0:min([sorted_result.__len__(), 1])]
+        sorted_result =  sorted_result[0:min([sorted_result.__len__(), 3])]
         index = np.argmin(f_results)
         min_results = results[index]
         return_result = min_results[0:2]
