@@ -10,7 +10,7 @@ import scipy as sp
 from Phase_Fsolve import *
 import matplotlib.pyplot as  plt
 
-filepath = unicode("../data/active_U1.csv", "utf8")
+filepath = unicode("../data/active_move_30.csv", "utf8")
 
 frequency = 920.625e6
 wavelength = 3e8 / frequency * 100
@@ -83,6 +83,12 @@ def main():
     first__win_y = get_window_mean_phase(tag0_data)
     tag1_data = preprocess(data, 1005)
     second_win_y = get_window_mean_phase(tag1_data)
+    plt.figure()
+    plt.plot(tag0_data[:,1],label="tag0 data")
+    plt.plot(tag1_data[:,1],label="tag1 data")
+    plt.legend()
+    plt.show()
+
     # 间距为10ms
     d_delta_list = []
     for i in range(3, min([second_win_y.__len__(), first__win_y.__len__()])):
@@ -90,14 +96,15 @@ def main():
                         [first__win_y[i - 1] - first__win_y[i - 3], second_win_y[i - 1] - second_win_y[i - 3]],
                         [first__win_y[i] - first__win_y[i - 3], second_win_y[i] - second_win_y[i - 3]]]
         d_delta = get_d_delta_by_phase_delta(phase_deltas)
-        d_delta_list.append(d_delta)
     pos_list = []
     for i in range(d_delta_list.__len__()):
         d_delta = d_delta_list[i]
         points = get_point(d_delta).tolist()
+        d_delta_list.append(d_delta)
         pos_list += points
 
-    # 画图
+    # 画图\
+    print pos_list
     pos_list = np.array(pos_list)
     plt.figure()
     plt.scatter(pos_list[:, 0], pos_list[:, 1])
