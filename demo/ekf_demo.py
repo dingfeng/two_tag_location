@@ -125,3 +125,4 @@ if DO_PLOT:
     plt.plot(p_pos)
     plt.plot(-p_pos)
     plt.plot(xs[:,0]-pos)
+    plt.show()
