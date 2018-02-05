@@ -43,14 +43,13 @@ def interp(data, tag_id):
     # print "average interval = ",np.mean(interval_list)
     # print "min interval = ", min_interval, " max interval = ", max_interval
     data[:, 3] = unwrap(data[:, 3])
-
     x = data[:, 1] / 1000
     y = data[:, 3]
     f_linear = interpolate.interp1d(x, y)
     maxX = x[x.size - 1]
     minX = x[0]
-    timeInterval = 5
-    x = np.linspace(minX, maxX, (maxX - minX) / timeInterval)
+    timeInterval = 10
+    x = np.linspace(minX+100, maxX, (maxX - minX) / timeInterval)
     y = f_linear(x)
     return y
 
