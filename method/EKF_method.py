@@ -53,10 +53,10 @@ def get_rk():
                     [0., 0., 0., 0., 1., dt],
                     [0., 0., 0., 0., 0., 1.]])
     # 初始位置 先设置为0
-    rk.x = array([0, 0, 1, 0.6, 0, 1]).T
+    rk.x = array([0.5, 0, 1, 0.5, 0, 1]).T
     # 测量误差
     rk.R *= 0.001
-    rk.P *= 0.3
+    rk.P *= 1
     rk.Q *= 0.001
     return rk
 
@@ -140,11 +140,11 @@ def start_simulation():
     return
 
 
+
+
 pos_tags = array([[-0.05, 0], [0.05, 0]])
 filepath = unicode("../data/active-60cm-40cm-2.csv", "utf8")
-
 def main():
-
     data = FileReader.read_file(filepath)
     for i in range(15,16):
         rk = get_rk()
@@ -170,7 +170,8 @@ def main():
         plt.scatter(predicted1[:, 0], predicted1[:, 1])
         plt.figure()
         plt.plot(predicted1[:,0])
-
+        plt.figure()
+        plt.plot(predicted1[:, 1])
     plt.show()
     return
 
