@@ -6,7 +6,7 @@ from sympy.abc import x, y, r, theta
 from sympy import symbols, Matrix
 
 sympy.init_printing(use_latex="mathjax", fontsize='16pt')
-theta_v, theta_acceleration = symbols("theta_v,theta_acceleration")
+theta_v, theta_a = symbols("theta_v,theta_a")
 m = 0.03
 x_tag0 = (r + m) * sympy.cos(theta) + x
 y_tag0 = (r + m) * sympy.sin(theta) + y
@@ -20,5 +20,5 @@ distance_tag0 = sympy.sqrt(x_tag0 ** 2 + y_tag0 ** 2)
 distance_tag1 = sympy.sqrt(x_tag1 ** 2 + y_tag1 ** 2)
 distance_tag2 = sympy.sqrt(x_tag2 ** 2 + y_tag2 ** 2)
 fxu = Matrix([[distance_tag0], [distance_tag1], [distance_tag2]])
-F = fxu.jacobian(Matrix([x, y, theta, theta_v, theta_acceleration]))
+F = fxu.jacobian(Matrix([x, y, r, theta, theta_v, theta_a]))
 print F
