@@ -51,6 +51,9 @@ def interp(data, tag_id):
     timeInterval = 10
     x = np.linspace(minX+100, maxX, (maxX - minX) / timeInterval)
     y = f_linear(x)
+    # plt.figure()
+    # plt.plot(x,y)
+    # plt.show()
     return y
 
 

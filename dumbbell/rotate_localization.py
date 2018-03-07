@@ -16,35 +16,69 @@ from numpy import array, eye, asarray, sin, cos, arccos
 from dataprecess.FileReader import FileReader
 import dataprecess.FDUtils as FDUtils
 from mpl_toolkits.mplot3d import Axes3D
-
+import sympy
+from sympy import symbols, Matrix
+import time
 ''' 扩展卡尔曼滤波'''
 
+
+# 求解雅可比行列式模块
+class Rotating_Model_Jacobian:
+    def __init__(self):
+        x, y, z, r, theta, theta_v, theta_a = symbols("x,y,z,r,theta,theta_v,theta_a")
+        m = 0.03
+        x_tag0 = (r + m) * sympy.cos(theta) + x
+        y_tag0 = (r + m) * sympy.sin(theta) + y
+        angle_delta = sympy.acos((2 * r ** 2 - m * r) / (2 * r * sympy.sqrt(r ** 2 + m ** 2 - m * r)))
+        d = sympy.sqrt(r ** 2 + m ** 2 - m * r)
+        x_tag1 = d * sympy.cos(theta - angle_delta) + x
+        y_tag1 = d * sympy.sin(theta - angle_delta) + y
+        x_tag2 = d * sympy.cos(theta + angle_delta) + x
+        y_tag2 = d * sympy.cos(theta + angle_delta) + y
+        distance_tag0 = sympy.sqrt(x_tag0 ** 2 + y_tag0 ** 2 + z ** 2)
+        distance_tag1 = sympy.sqrt(x_tag1 ** 2 + y_tag1 ** 2 + z ** 2)
+        distance_tag2 = sympy.sqrt(x_tag2 ** 2 + y_tag2 ** 2 + z ** 2)
+        fxu = Matrix([[distance_tag0], [distance_tag1], [distance_tag2]])
+        self.F_J = fxu.jacobian(Matrix([x, y, z,r, theta, theta_v, theta_a]))
+        self.x, self.y, self.z, self.r, self.theta, self.theta_v, self.theta_a = x, y, z, r, theta, theta_v, theta_a
+        self.subs = {x: 0, y: 0, z: 0, r: 0, theta: 0, theta_v: 0, theta_a: 0}
+        pass
+
+    def get_jacobian_array(self, x):
+        self.subs[self.x] = x[0]
+        self.subs[self.y] = x[1]
+        self.subs[self.z] = x[2]
+        self.subs[self.r] = x[3]
+        self.subs[self.theta] = x[4]
+        self.subs[self.theta_v] = x[5]
+        self.subs[self.theta_a] = x[6]
+        print 'begin  ',time.time()
+        F = array(self.F_J.evalf(subs=self.subs)).astype(float)
+        print 'end  ',time.time()
+        return F
+
+
 triangle = 0.03
+rotating_model_jacobian = None
+
+
+# pos_tags = np.array(
+#     [[0, triangle, 0], [-triangle * sqrt(3) / 2.0, -3.0 / 2, 0], [triangle * sqrt(3) / 2.0, -3.0 / 2.0, 0]])
 
 
 def H_of(x):
-    pos_x = float(x[0])
-    pos_y = float(x[3])
-    pos_z = float(x[6])
-    shape = pos_tags.shape
-    result = np.zeros((shape[0], 9))
-    for i in range(shape[0]):
-        tag_x = float(pos_tags[i][0])
-        tag_y = float(pos_tags[i][1])
-        tag_z = float(pos_tags[i][2])
-        result[i][0] = (pos_x - tag_x) / sqrt((pos_x - tag_x) ** 2 + (pos_y - tag_y) ** 2 + (pos_z - tag_z) ** 2)
-        result[i][3] = (pos_y - tag_y) / sqrt((pos_x - tag_x) ** 2 + (pos_y - tag_y) ** 2 + (pos_z - tag_z) ** 2)
-        result[i][6] = (pos_z - tag_z) / sqrt((pos_x - tag_x) ** 2 + (pos_y - tag_y) ** 2 + (pos_z - tag_z) ** 2)
+    result = rotating_model_jacobian.get_jacobian_array(x)
     return result
 
 
 def hx(x):
     x0 = x[0]
     y0 = x[1]
-    r = x[2]
-    theta = x[3]
-    theta_v = x[4]
-    theta_a = x[5]
+    z0 = x[2]
+    r = x[3]
+    theta = x[4]
+    theta_v = x[5]
+    theta_a = x[6]
     x_tag0 = (r + triangle) * cos(theta) + x0
     y_tag0 = (r + triangle) * sin(theta) + y0
     angle_delta = arccos(
@@ -54,9 +88,9 @@ def hx(x):
     y_tag1 = d * sin(theta - angle_delta) + y0
     x_tag2 = d * cos(theta + angle_delta) + x0
     y_tag2 = d * cos(theta + angle_delta) + y0
-    distance_tag0 = sqrt(x_tag0 ** 2 + y_tag0 ** 2)
-    distance_tag1 = sqrt(x_tag1 ** 2 + y_tag1 ** 2)
-    distance_tag2 = sqrt(x_tag2 ** 2 + y_tag2 ** 2)
+    distance_tag0 = sqrt(x_tag0 ** 2 + y_tag0 ** 2 + z0 ** 2)
+    distance_tag1 = sqrt(x_tag1 ** 2 + y_tag1 ** 2 + z0 ** 2)
+    distance_tag2 = sqrt(x_tag2 ** 2 + y_tag2 ** 2 + z0 ** 2)
     return asarray([distance_tag0, distance_tag1, distance_tag2])
 
 
@@ -65,17 +99,20 @@ rk = None
 
 def get_rk():
     global rk
-    rk = ExtendedKalmanFilter(dim_x=9, dim_z=3)
+    global rotating_model_jacobian
+    rotating_model_jacobian = Rotating_Model_Jacobian()
+    rk = ExtendedKalmanFilter(dim_x=7, dim_z=3)
     dt = 0.01
-    rk.F = asarray([[1., 0., 0., 0., 0., 0.],
-                    [0., 1., 0., 0., 0., 0.],
-                    [0., 0., 1., 0., 0., 0.],
-                    [0., 0., 0., 1., dt, dt * dt / 2],
-                    [0., 0., 0., 0., 1., dt],
-                    [0., 0., 0., 0., 0., dt]
+    rk.F = asarray([[1., 0., 0., 0., 0., 0., 0.],
+                    [0., 1., 0., 0., 0., 0., 0.],
+                    [0., 0., 1., 0., 0., 0., 0.],
+                    [0., 0., 0., 1., 0., 0., 0.],
+                    [0., 0., 0., 0., 1., dt, dt * dt / 2],
+                    [0., 0., 0., 0., 0., 1., dt],
+                    [0., 0., 0., 0., 0., 0., 1.]
                     ])
     # 初始位置 先设置为0
-    rk.x = array([1, 1, 1, 1, 1, 1]).T
+    rk.x = array([1, 1, 1, 0.4, 0, 1, 1]).T
     # 测量误差
     rk.R *= 0.001
     rk.P *= 1
@@ -112,27 +149,47 @@ def get_delta_d(delta_phase):
     return delta_d
 
 
-tag_r = 3
-pos_tags = np.array([[0, tag_r, 0], [-tag_r * sqrt(3) / 2.0, -3.0 / 2, 0], [tag_r * sqrt(3) / 2.0, -3.0 / 2.0, 0]])
-
 distances = []
 
 
 def get_simulation_data():
     global distances
-    x = np.linspace(0, 0.5, 100)
-    y = x ** 2
-    z = x ** 2 + 1
+    global triangle
+    circle_center = [1, 1, 1]
+    r = 0.4
+    radians = np.linspace(0, np.pi, 100)
+    # x = r * cos(radians) + circle_center[0]
+    # y = r * sin(radians) + circle_center[1]
+    # z = asarray([circle_center[2] for i in range(x.size)])
+    m = triangle
+    x_tag0 = (r + m) * cos(radians) + circle_center[0]
+    y_tag0 = (r + m) * sin(radians) + circle_center[1]
+    z_tag0 = asarray([circle_center[2] for i in range(radians.size)])
+
+    x_tag1 = sqrt(r ** 2 + m ** 2 - m * r) * cos(
+        radians - arccos((2 * r ** 2 - m * r) / (2 * r * sqrt(r ** 2 + m ** 2 - m * r)))) + \
+             circle_center[0]
+    y_tag1 = sqrt(r ** 2 + m ** 2 - m * r) * sin(
+        radians - arccos((2 * r ** 2 - m * r) / (2 * r * sqrt(r ** 2 + m ** 2 - m * r)))) + \
+             circle_center[1]
+    z_tag1 = asarray([circle_center[2] for i in range(radians.size)])
+
+    x_tag2 = sqrt(r ** 2 + m ** 2 - m * r) * cos(
+        radians + arccos((2 * r ** 2 - m * r) / (2 * r * sqrt(r ** 2 + m ** 2 - m * r)))) + \
+             circle_center[0]
+    y_tag2 = sqrt(r ** 2 + m ** 2 - m * r) * sin(
+        radians + arccos((2 * r ** 2 - m * r) / (2 * r * sqrt(r ** 2 + m ** 2 - m * r)))) + \
+             circle_center[1]
+    z_tag2 = asarray([circle_center[2] for i in range(radians.size)])
+
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(x, y, z)
-    plt.figure()
-    plt.scatter(x, y)
+    ax.scatter(x_tag0, y_tag0, z_tag0)
     phases = []
-    for i in range(y.size):
-        distance = [sqrt((x[i] - pos_tags[0, 0]) ** 2 + (y[i] - pos_tags[0, 1]) ** 2 + (z[i] - pos_tags[0, 2]) ** 2),
-                    sqrt((x[i] - pos_tags[1, 0]) ** 2 + (y[i] - pos_tags[1, 1]) ** 2 + (z[i] - pos_tags[1, 2]) ** 2),
-                    sqrt((x[i] - pos_tags[2, 0]) ** 2 + (y[i] - pos_tags[2, 1]) ** 2 + (z[i] - pos_tags[2, 2]) ** 2)
+    for i in range(x_tag0.size):
+        distance = [sqrt(x_tag0[i] ** 2 + y_tag0[i] ** 2 + z_tag0[i] ** 2),
+                    sqrt(x_tag1[i] ** 2 + y_tag1[i] ** 2 + z_tag1[i] ** 2),
+                    sqrt(x_tag2[i] ** 2 + y_tag2[i] ** 2 + z_tag2[i] ** 2)
                     ]
         if i == 0:
             distances = distance
@@ -153,24 +210,27 @@ def start_simulation():
     tag0 = simulation_data[:, 0]
     tag1 = simulation_data[:, 1]
     tag2 = simulation_data[:, 2]
-    rk.predict_update(distances, H_of, hx, args=pos_tags, hx_args=pos_tags)
+    rk.predict_update(distances, H_of, hx)
     predicted = []
     for i in range(1, min([tag1.size, tag0.size, tag2.size])):
+        print i
         tag0_distance_delta = get_delta_d(tag0[i] - tag0[i - 1])
         tag1_distance_delta = get_delta_d(tag1[i] - tag1[i - 1])
         tag2_distance_delta = get_delta_d(tag2[i] - tag2[i - 1])
         distances += asarray([tag0_distance_delta, tag1_distance_delta, tag2_distance_delta])
-        rk.predict_update(distances, H_of, hx, args=pos_tags, hx_args=pos_tags)
-        predicted.append([rk.x[0], rk.x[3], rk.x[6]])
+        rk.predict_update(distances, H_of, hx)
+        print rk.x
+        predicted.append(rk.x[3])
         # print [rk.x[0], rk.x[3]]
     predicted1 = asarray(predicted)
     # predicted1 = np.dot(predicted, asarray([[np.cos(np.pi), -np.sin(np.pi)], [np.sin(np.pi), np.cos(np.pi)]]))
-    for i in range(predicted1.shape[0]):
-        print predicted1[i, :]
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(predicted1[:, 0], predicted1[:, 1], predicted1[:, 2])
-
+    # for i in range(predicted1.shape[0]):
+    #     print predicted1[i, :]
+    # fig = plt.figure()
+    # ax = fig.add_subplot(111, projection='3d')
+    # ax.scatter(predicted1[:, 0], predicted1[:, 1], predicted1[:, 2])
+    plt.figure()
+    plt.plot(predicted1)
     plt.show()
     return
 

@@ -12,10 +12,11 @@ from numpy.random import randn
 from math import sqrt
 import numpy as np
 from filterpy.kalman import ExtendedKalmanFilter
-from numpy import array, eye, asarray,sin,cos,arccos
+from numpy import array, eye, asarray, sin, cos, arccos
 from dataprecess.FileReader import FileReader
 import dataprecess.FDUtils as FDUtils
 from mpl_toolkits.mplot3d import Axes3D
+from numpy.linalg import norm
 
 ''' 扩展卡尔曼滤波'''
 
@@ -68,11 +69,18 @@ def get_rk():
                     [0., 0., 0., 0., 0., 0., 0., 1.0, dt],
                     [0., 0., 0., 0., 0., 0., 0., 0., 1.0]])
     # 初始位置 先设置为0
-    rk.x = array([0.5, 0., 1., 0.5, 0., 1.0, 0.5, 0., 1.]).T
+    # rk.x = array([0., 0., 1., 0., -0.473, 1.0, 0.6, 0., 1.]).T
+    rk.x = array([0., 0., 1.0, 0., 0, 1.0, 0.9, 0.0, 0.0]).T
     # 测量误差
     rk.R *= 0.001
     rk.P *= 1
+    rk.P[6, 6] = 0.0
+    rk.P[7, 7] = 0.0
+    rk.P[8, 8] = 0.00
     rk.Q *= 0.001
+    rk.Q[6, 6] = 0.0
+    rk.Q[7, 7] = 0.0
+    rk.Q[8, 8] = 0.0
     return rk
 
 
@@ -105,8 +113,9 @@ def get_delta_d(delta_phase):
     return delta_d
 
 
-tag_r = 3
-pos_tags = np.array([[0, tag_r, 0], [-tag_r * sqrt(3) / 2.0, -3.0 / 2, 0], [tag_r * sqrt(3) / 2.0, -3.0 / 2.0, 0]])
+tag_r = 0.05
+pos_tags = np.array(
+    [[0, tag_r, 0], [-tag_r * sqrt(3) / 2.0, -tag_r / 2.0, 0], [tag_r * sqrt(3) / 2.0, -tag_r / 2.0, 0]])
 
 distances = []
 
@@ -115,7 +124,7 @@ def get_simulation_data():
     global distances
     x = np.linspace(0, 0.5, 100)
     y = x ** 2
-    z = x ** 2+1
+    z = x ** 2 + 1
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter(x, y, z)
@@ -168,5 +177,43 @@ def start_simulation():
     return
 
 
+def main():
+    filepath = unicode("../data/active_three_d_5.csv", "utf8")
+    data = FileReader.read_file(filepath)
+    tag0 = FDUtils.interp(data, 9006)
+    tag1 = FDUtils.interp(data, 9026)
+    tag2 = FDUtils.interp(data, 9027)
+    tag0_pos = pos_tags[0]
+    tag1_pos = pos_tags[1]
+    tag2_pos = pos_tags[2]
+    antenna_pos = np.array([0, 0.447, 0.9])
+    distances = asarray(
+        [norm(antenna_pos - tag0_pos, 2), norm(antenna_pos - tag1_pos, 2), norm(antenna_pos - tag2_pos, 2)])
+    # distances = asarray([get_delta_d(tag0[0]),get_delta_d(tag1[0]),get_delta_d(tag2[0])])
+    rk = get_rk()
+    rk.predict_update(distances, H_of, hx, args=pos_tags, hx_args=pos_tags)
+    predicted = []
+    for i in range(1, min([tag0.size, tag1.size, tag2.size])):
+        tag0_distance_delta = get_delta_d(tag0[i] - tag0[i - 1])
+        tag1_distance_delta = get_delta_d(tag1[i] - tag1[i - 1])
+        tag2_distance_delta = get_delta_d(tag2[i] - tag2[i - 1])
+        distances += asarray([tag0_distance_delta, tag1_distance_delta, tag2_distance_delta])
+        rk.predict_update(distances, H_of, hx, args=pos_tags, hx_args=pos_tags)
+        predicted.append([rk.x[0], rk.x[3], rk.x[6]])
+        print rk.x
+    predicted = asarray(predicted)
+    plt.figure()
+    plt.plot(asarray(range(predicted[:, 2].size)), predicted[:, 2])
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.scatter(predicted[:, 0], predicted[:, 1], predicted[:, 2])
+    # fig = plt.figure()
+    # ax = fig.add_subplot(111, projection='3d')
+    # ax.scatter(predicted[:, 0][100:], predicted[:, 1][100:], predicted[:, 2][100:])
+    plt.show()
+
+
 if __name__ == "__main__":
-    start_simulation()
+    # start_simulation()
+    main()
