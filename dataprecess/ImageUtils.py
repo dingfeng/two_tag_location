@@ -11,7 +11,7 @@ class ImageUtils(object):
     @classmethod
     def draw_scatter_diagram(cls, x, y):
         pl.plot(x, y, 'or')
-        pl.show()
+        # pl.show()
 
     @classmethod
     def draw_label_scatter_diagram(cls,x,y,line_label):
