@@ -4,7 +4,7 @@
 from  dataprecess.FDUtils import *
 from dataprecess.ImageUtils import ImageUtils
 
-# source_file = unicode("../data/V02.csv", "utf8")
-dest_file = unicode("../data/active_V02.csv", "utf8")
+source_file = unicode("../data/h1.csv", "utf8")
+dest_file = unicode("../data/active_h1.csv", "utf8")
 ImageUtils.draw_phase_diagram(dest_file)
-# cut_phase_data(source_file, 3e6, 7e6, dest_file)
+# cut_phase_data(source_file, 0, 4939000, dest_file)
