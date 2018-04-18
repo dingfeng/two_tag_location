@@ -7,6 +7,7 @@ import pandas as pd
 from filterpy.kalman import KalmanFilter
 from  dataprecess.ImageUtils import ImageUtils
 import matplotlib.pyplot as plt
+import scipy
 
 noises = {8001: 0.0157178001838, 8002: 0.0364688555131}
 
@@ -23,7 +24,7 @@ def interp1d(timeSeriesData, startTime, timeIndex, dataIndex):
     f_linear = interpolate.interp1d(time, timeSeriesData[:, dataIndex])
     maxX = time[-1]
     timeInterval = 10
-    x = np.linspace(startTime, maxX, num = int((maxX - startTime) / timeInterval))
+    x = np.linspace(startTime, maxX, num=int((maxX - startTime) / timeInterval))
     y = f_linear(x)
 
     return y
@@ -49,7 +50,7 @@ def filter(data, var):
 
 def preprocessOneData(epc, startTime, oneData):
     # 对相位unwrap
-    timeSeriesData = oneData[oneData[:, 0].argsort(),:]
+    timeSeriesData = oneData[oneData[:, 0].argsort(), :]
     timeSeriesData[:, 2] = np.unwrap(timeSeriesData[:, 2])
     # plt.show()
     # 时间单位转化为毫秒
@@ -82,23 +83,51 @@ def preprocess(data):
     for epc in epcs:
         oneData = data[np.where(data[:, 0] == epc)[0], 1:]
         result[int(epc)] = oneData
-    startTime=100
+    startTime = 100
     for epc in epcs:
         result[int(epc)] = preprocessOneData(int(epc), startTime, result[int(epc)])
     return result
 
 
+def segment(data, window_size=10, threshold=0.015, consecutiveCount=15):
+    activeIndexes=[]
+    currentConsecutive = 0
+    for i in range(window_size, data.size, window_size):
+        windowData = data[i - window_size:i]
+        windowStd = np.std(windowData)
+        print windowStd
+        if (windowStd < threshold):
+            currentConsecutive += 1
+        else:
+            currentConsecutive = 0
+        if (currentConsecutive > consecutiveCount):
+            activeIndexes.append(i - window_size)
+    return activeIndexes
+
+
 def testPreprocess():
-    filepath = unicode("../data/h5.csv", "utf8")
+    filepath = unicode("../data/v2.csv", "utf8")
     data = getData(filepath)
     ImageUtils.draw_phase_diagram(filepath)
     preprocessedData = preprocess(data)
     plt.figure()
     plt.title("after preprocess")
+    epcActiveDict = {}
     for epc in preprocessedData.keys():
         dataOfEpc = preprocessedData[epc][:, 1]
+        activeIndexes = segment(dataOfEpc)
+        epcActiveDict[epc] = activeIndexes
         plt.plot(range(dataOfEpc.size), dataOfEpc.tolist(), label=str(epc))
+        # plt.plot(range(activeIndexes.__len__()),activeIndexes,label=str(epc)+" KL")
     plt.legend()
+    plt.figure()
+    plt.title("active indexes")
+    for epc in preprocessedData.keys():
+        dataOfEpc = preprocessedData[epc][:, 1]
+        activeIndexes = epcActiveDict[epc]
+        plt.scatter(activeIndexes, dataOfEpc[activeIndexes], label=str(epc)+"marked",marker="*")
+    plt.legend()
+
     plt.show()
     return
 
