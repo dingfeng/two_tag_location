@@ -25,9 +25,10 @@ class RotatingEKF:
     frequency = 920.625e6
     wave_length = float(3e8 / frequency)
 
-
-    def __init__(self):
-        pass
+    def __init__(self,filepath,antenna_pos):
+        self.filepath=filepath
+        self.antenna_pos= antenna_pos
+        return
 
     def H_of(self, x, antenna_pos):
         r = self.radius
