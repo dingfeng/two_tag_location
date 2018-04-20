@@ -19,7 +19,6 @@ static_z = 0
 static_x = 0.0425
 static_y = 0.8
 
-
 def H_of(x, antenna_pos):
     global static_z
     global static_x

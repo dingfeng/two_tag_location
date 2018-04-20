@@ -1,0 +1,3 @@
+antenna height = 90.8cm
+tag to antenna distance = 100cm
+tag height=5.2cm

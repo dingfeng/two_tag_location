@@ -6,7 +6,7 @@ import numpy as np
 import pylab
 import scipy.stats as stats
 
-filepath = unicode("../data/active_h1.csv", "utf8")
+filepath = unicode("../data/lab-2018-4-20/active_h1.csv", "utf8")
 csvData = np.loadtxt(filepath, delimiter=',', skiprows=1)
 epcs = np.unique(csvData[:, 0])
 for epc in epcs:

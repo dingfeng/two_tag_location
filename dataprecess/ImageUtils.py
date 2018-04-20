@@ -33,10 +33,10 @@ class ImageUtils(object):
                 epcData=data[indexes,:][0]
                 x= np.transpose(epcData[:,1])
                 y=np.transpose(epcData[:,3])
-                plt.scatter(x,y,label=str(int(epc)))
+                plt.plot(x,y,label=str(int(epc)))
             plt.legend()
             # plt.savefig(file_path+"_phase.png")
-            # plt.show()
+            plt.show()
         return
 
     @classmethod

@@ -9,7 +9,7 @@ from  dataprecess.ImageUtils import ImageUtils
 import matplotlib.pyplot as plt
 import scipy
 
-noises = {8001: 0.0157178001838, 8002: 0.0364688555131}
+noises = {8005: 0.0419677551255, 8002: 0.0364688555131}
 
 
 def getData(filepath):
@@ -89,7 +89,7 @@ def preprocess(data):
     return result
 
 
-def segment(data, window_size=10, threshold=0.015, consecutiveCount=15):
+def segment(data, window_size=10, threshold=0.03, consecutiveCount=15):
     activeIndexes=[]
     currentConsecutive = 0
     for i in range(window_size, data.size, window_size):
@@ -106,7 +106,8 @@ def segment(data, window_size=10, threshold=0.015, consecutiveCount=15):
 
 
 def testPreprocess():
-    filepath = unicode("../data/v2.csv", "utf8")
+    filepath = unicode("../data/lab-2018-4-20/v3.csv", "utf8")
+    dest_filepath=unicode("../data/lab-2018-4-20/active_v3.csv", "utf8")
     data = getData(filepath)
     ImageUtils.draw_phase_diagram(filepath)
     preprocessedData = preprocess(data)
@@ -126,6 +127,7 @@ def testPreprocess():
         dataOfEpc = preprocessedData[epc][:, 1]
         activeIndexes = epcActiveDict[epc]
         plt.scatter(activeIndexes, dataOfEpc[activeIndexes], label=str(epc)+"marked",marker="*")
+
     plt.legend()
 
     plt.show()
