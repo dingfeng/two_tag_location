@@ -5,9 +5,11 @@ import numpy as np
 from scipy import interpolate
 import pandas as pd
 from filterpy.kalman import KalmanFilter
+
+from OneTagVerticalEKF import VerticalEKF
+from OneTagRotatingEKF import RotatingEKF
 from  dataprecess.ImageUtils import ImageUtils
 import matplotlib.pyplot as plt
-import scipy
 
 noises = {8005: 0.0419677551255, 8002: 0.0364688555131}
 
@@ -16,6 +18,8 @@ def getData(filepath):
     file_content = np.loadtxt(filepath, delimiter=',', skiprows=1)
     # EPC time RSSI phase
     data = file_content[:, [0, 3, 4, 5]]
+    # 时间单位转化为毫秒
+    data[:, 1] = data[:, 1] / 1000.0
     return data
 
 
@@ -52,9 +56,6 @@ def preprocessOneData(epc, startTime, oneData):
     # 对相位unwrap
     timeSeriesData = oneData[oneData[:, 0].argsort(), :]
     timeSeriesData[:, 2] = np.unwrap(timeSeriesData[:, 2])
-    # plt.show()
-    # 时间单位转化为毫秒
-    timeSeriesData[:, 0] = timeSeriesData[:, 0] / 1000
     # 对相位进行插值
     phase_y = interp1d(timeSeriesData, startTime, 0, 2)
     # plt.figure()
@@ -90,7 +91,7 @@ def preprocess(data):
 
 
 def segment(data, window_size=10, threshold=0.03, consecutiveCount=15):
-    activeIndexes=[]
+    activeIndexes = []
     currentConsecutive = 0
     for i in range(window_size, data.size, window_size):
         windowData = data[i - window_size:i]
@@ -101,36 +102,88 @@ def segment(data, window_size=10, threshold=0.03, consecutiveCount=15):
         else:
             currentConsecutive = 0
         if (currentConsecutive > consecutiveCount):
-            activeIndexes.append(i - window_size)
+            activeIndexes += range(i - window_size, i)
+    activeIndexes = list(set(range(data.size)) - set(activeIndexes))
+    activeIndexes.sort()
     return activeIndexes
 
 
+def rotatingBrokenRegion(data, RSSILowThreshold=-66, maxTimeThreshold=200):
+    result = []
+    shape = data.shape
+    for i in range(1, shape[0]):
+        if data[i, 1] < RSSILowThreshold and data[i - 1, 1] < RSSILowThreshold and data[i, 0] - data[
+                    i - 1, 0] > maxTimeThreshold:
+            result.append([data[i - 1, 0], data[i, 0]])
+    return np.asarray(result)
+
+
 def testPreprocess():
-    filepath = unicode("../data/lab-2018-4-20/v3.csv", "utf8")
-    dest_filepath=unicode("../data/lab-2018-4-20/active_v3.csv", "utf8")
+    filepath = unicode("../data/lab-2018-4-20/h2.csv", "utf8")
     data = getData(filepath)
     ImageUtils.draw_phase_diagram(filepath)
     preprocessedData = preprocess(data)
-    plt.figure()
-    plt.title("after preprocess")
+    rotatingRegion = rotatingBrokenRegion(data[:, [1, 2]])
     epcActiveDict = {}
     for epc in preprocessedData.keys():
         dataOfEpc = preprocessedData[epc][:, 1]
+        # 通过 RSSI 判断是旋转还是垂直运动
         activeIndexes = segment(dataOfEpc)
         epcActiveDict[epc] = activeIndexes
         plt.plot(range(dataOfEpc.size), dataOfEpc.tolist(), label=str(epc))
         # plt.plot(range(activeIndexes.__len__()),activeIndexes,label=str(epc)+" KL")
-    plt.legend()
-    plt.figure()
-    plt.title("active indexes")
+
     for epc in preprocessedData.keys():
+        # 垂直上升运动
         dataOfEpc = preprocessedData[epc][:, 1]
         activeIndexes = epcActiveDict[epc]
-        plt.scatter(activeIndexes, dataOfEpc[activeIndexes], label=str(epc)+"marked",marker="*")
+        activePhaseData = dataOfEpc[activeIndexes]
+        plt.figure()
+        plt.title("active position")
+        plt.plot(activeIndexes, activePhaseData)
 
-    plt.legend()
+        if (rotatingRegion.size == 0):
+            verticalInitialState = np.array([0, 0, 0.1]).T
+            verticalAntennaPos = np.asarray([[0, 1.0, 0.856]])
+            verticalPhaseData = activePhaseData
+            verticalEKF = VerticalEKF(verticalInitialState, verticalAntennaPos, verticalPhaseData)
+            plt.figure()
+            plt.title("vertical EKF result")
+            result = verticalEKF.getResult()
+            plt.plot(result)
+            plt.show()
+        else:
+            # 圆周运动
+            rotatingInitialState = np.array([0, 0, 0.1]).T
+            rotatingAntennaPos = np.asarray([[0, 1.0, 0.856]])
+            rotatingPhaseData = activePhaseData
+            rotatingRadiuses = np.linspace(0.18, 0.6, 10)
+            radiuses = []
+            for rotatingRadius in rotatingRadiuses:
+                # rotatingRadius=0.33
+                rotatingEKF = RotatingEKF(rotatingInitialState, rotatingAntennaPos, rotatingPhaseData, rotatingRadius)
+                result = rotatingEKF.getResult()
+                radius = max(result)
+                radiuses.append(radius)
+            # 进行二项拟合
+            z1 = np.polyfit(rotatingRadiuses, radiuses, 2)
+            a, b, c = z1
+            c=c - np.pi/2
+            print z1
+            delta = b ** 2 - 4 * a * c
+            if (delta >= 0):
+                trueRadius=(-b-np.sqrt(delta))/(2*a)
+                print 'trueRadius= ',trueRadius
 
-    plt.show()
+            p1 = np.poly1d(z1)
+            yvals = p1(rotatingRadiuses)
+
+            plt.figure()
+            plt.plot(rotatingRadiuses, radiuses, '*', label='original values')
+            plt.plot(rotatingRadiuses, yvals, 'r', label='polyfit values')
+            plt.show()
+            pass
+
     return
 
 

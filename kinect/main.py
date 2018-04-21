@@ -4,7 +4,7 @@
 import numpy as np
 import pylab as pl
 import matplotlib.pyplot as plt
-filename=unicode("../kinect_data/V02.txt","utf8")
+filename=unicode("../kinect_data/h2.txt","utf8")
 file_content = np.loadtxt(filename,delimiter=' ')
 x=file_content[:,0]
 x=x-x[0]

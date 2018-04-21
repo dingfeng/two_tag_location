@@ -17,18 +17,23 @@ from dataprecess.ImageUtils import ImageUtils
 
 
 class RotatingEKF:
-    distances = None
-    antenna_pos = asarray([[0, 1., 1.0]])
-    filepath = unicode("../data/active_V02.csv", "utf8")
     radius = None
-    rk = None
     frequency = 920.625e6
     wave_length = float(3e8 / frequency)
+    distances = None
+    # antenna_pos = asarray([[0, 1, 0.8]])
+    antenna_pos = None
+    rk = None
+    initialState = None
+    phaseData = None
 
-    def __init__(self,filepath,antenna_pos):
-        self.filepath=filepath
-        self.antenna_pos= antenna_pos
-        return
+    def __init__(self, initialState, antenna_pos, phaseData, radius):
+        self.initialState = initialState
+        self.antenna_pos = antenna_pos
+        self.phaseData = phaseData
+        self.radius = radius
+        self.distances = asarray([np.sqrt(antenna_pos[0, 0] ** 2 + antenna_pos[0, 1] ** 2 + antenna_pos[0, 2] ** 2)])
+        pass
 
     def H_of(self, x, antenna_pos):
         r = self.radius
@@ -41,7 +46,7 @@ class RotatingEKF:
         result[0][0] = r * ((r - antenna_pos[0, 2]) * np.sin(theta) - antenna_pos[0, 0] * np.cos(theta)) / denominator
         return result
 
-    def hx(self,x, antenna_pos):
+    def hx(self, x, antenna_pos):
         result = []
         r = self.radius
         theta = float(x[0])
@@ -60,13 +65,13 @@ class RotatingEKF:
             [0., 0., 1.]
         ])
         # 初始位置 先设置为0
-        self.rk.x = array([0, 0, 0.2]).T
+        # self.rk.x = array([0, 0, 0.2]).T
+        self.rk.x = self.initialState
         # 测量误差
         self.rk.R *= 0.01
         self.rk.P *= 10
         self.rk.Q *= 0.001
         return self.rk
-
 
     # 单位为cm
     def get_distance_by_phase(self, phase):
@@ -88,10 +93,25 @@ class RotatingEKF:
         r = self.radius
         x = r * np.sin(theta)
         z = r * (1 - np.cos(theta))
-        distance = [sqrt((x - self.antenna_pos[0, 0]) ** 2 + self.antenna_pos[0, 1] ** 2 + (z - self.antenna_pos[0, 2]) ** 2)]
+        distance = [
+            sqrt((x - self.antenna_pos[0, 0]) ** 2 + self.antenna_pos[0, 1] ** 2 + (z - self.antenna_pos[0, 2]) ** 2)]
         phase = 4 * np.pi * distance[0] / self.wave_length % (2 * np.pi)
         return phase
 
+    # return start[0] list
+    def getResult(self):
+        rk = self.get_rk()
+        rk.predict_update(self.distances, self.H_of, self.hx, args=self.antenna_pos, hx_args=self.antenna_pos)
+        predicted = []
+        for i in range(1, self.phaseData.size):
+            distance = self.get_delta_d(self.phaseData[i] - self.phaseData[i - 1])
+            self.distances += asarray([distance])
+            rk.predict_update(self.distances, self.H_of, self.hx, args=self.antenna_pos, hx_args=self.antenna_pos)
+            predicted.append(rk.x[0])
+        return predicted
+
+
+    # generate simulation data
     def get_simulation_data(self):
         phases = []
         thetas = np.linspace(0, np.pi / 2, 1000)
@@ -109,6 +129,7 @@ class RotatingEKF:
             phases.append(phase)
         return asarray(phases)
 
+    # start simulation process
     def start_simulation(self):
         simulationData = self.get_simulation_data()[:, 0]
         radiusRange = np.linspace(0.2, 0.6, 10)
@@ -132,12 +153,11 @@ class RotatingEKF:
         plt.legend()
         plt.show()
 
-
-def main():
-    ekf=RotatingEKF()
-    ekf.start_simulation()
-    return
-
-
-if __name__ == "__main__":
-    main()
+# def main():
+#     ekf = RotatingEKF()
+#     ekf.start_simulation()
+#     return
+#
+#
+# if __name__ == "__main__":
+#     main()
