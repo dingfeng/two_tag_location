@@ -5,13 +5,14 @@ import numpy as np
 from scipy import interpolate
 import pandas as pd
 from filterpy.kalman import KalmanFilter
-
+from matplotlib import rc
+rc('text', usetex=True)
 from OneTagVerticalEKF import VerticalEKF
 from OneTagRotatingEKF import RotatingEKF
 from  dataprecess.ImageUtils import ImageUtils
 import matplotlib.pyplot as plt
 
-noises = {8005: 0.0419677551255, 8002: 0.0364688555131}
+noises = {8005: 0.295723544337, 8002: 0.0364688555131}
 
 
 def getData(filepath):
@@ -63,12 +64,35 @@ def preprocessOneData(epc, startTime, oneData):
     # 对RSSI进行插值
     rssi_y = interp1d(timeSeriesData, startTime, 0, 1)
     # 对phase_y 进行kalman filter
-
+    # plt.figure()
+    # plt.subplot(211)
+    # plt.plot(range(phase_y.size),phase_y,'x-',color='b',label='before smoothing')
     phase_y = filter(phase_y, noises[int(epc)])
+    # plt.plot(range(phase_y.size),phase_y,'ob-',color='r',label='after smoothing')
+    # plt.xlabel('Sample')
+    # plt.ylabel('Phase')
+    # plt.legend()
+    # fig = plt.gcf()
+    # fig.set_size_inches(3.3492706944445, 3.3492706944445)
+    # plt.savefig("phase-smoothing.pdf",
+    #               dpi=1000,
+    #               bbox_inches='tight', )
     # 对rssi_y 进行kalman filter
-    window_size = 2
+    window_size = 10
+    # plt.figure()
+    # plt.subplot(212)
+    # plt.plot(range(rssi_y.size),rssi_y,'x-',color='b',label='before smoothing')
     rssi_y = pd.rolling_mean(rssi_y, window=window_size)[window_size - 1:];
-
+    # plt.plot(range(rssi_y.size),rssi_y,'ob-',color='r',label='after smoothing')
+    # plt.xlabel('Sample')
+    # plt.ylabel('RSSI')
+    # plt.legend()
+    # fig = plt.gcf()
+    # fig.set_size_inches(3.3492706944445, 3.3492706944445)
+    # plt.savefig("RSSI-smoothing.pdf",
+    #               dpi=1000,
+    #               bbox_inches='tight', )
+    # plt.show()
     minSize = np.min([phase_y.size, rssi_y.size])
     rssi_y = rssi_y[0:minSize]
     phase_y = phase_y[0:minSize]
@@ -147,11 +171,6 @@ def testPreprocess():
             verticalAntennaPos = np.asarray([[0, 1.0, 0.856]])
             verticalPhaseData = activePhaseData
             verticalEKF = VerticalEKF(verticalInitialState, verticalAntennaPos, verticalPhaseData)
-            plt.figure()
-            plt.title("vertical EKF result")
-            result = verticalEKF.getResult()
-            plt.plot(result)
-            plt.show()
         else:
             # 圆周运动
             rotatingInitialState = np.array([0, 0, 0.1]).T
@@ -169,19 +188,24 @@ def testPreprocess():
             z1 = np.polyfit(rotatingRadiuses, radiuses, 2)
             a, b, c = z1
             c=c - np.pi/2
-            print z1
             delta = b ** 2 - 4 * a * c
             if (delta >= 0):
                 trueRadius=(-b-np.sqrt(delta))/(2*a)
                 print 'trueRadius= ',trueRadius
-
             p1 = np.poly1d(z1)
             yvals = p1(rotatingRadiuses)
 
             plt.figure()
-            plt.plot(rotatingRadiuses, radiuses, '*', label='original values')
-            plt.plot(rotatingRadiuses, yvals, 'r', label='polyfit values')
-            plt.show()
+            plt.plot(rotatingRadiuses, radiuses, '*', label='estimated point')
+            plt.plot(rotatingRadiuses, yvals, 'r', label='fitting line')
+            plt.xlabel('radius')
+            plt.ylabel('maximum alpha')
+            fig=plt.gcf()
+            fig.set_size_inches(3.3492706944445,3.3492706944445/2)
+            # plt.show()
+            plt.savefig("fitting.pdf",
+                        dpi=1000,
+                        bbox_inches='tight',)
             pass
 
     return

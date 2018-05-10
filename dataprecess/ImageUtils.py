@@ -26,14 +26,14 @@ class ImageUtils(object):
             epcs = np.unique(data[:, 0])
             plt.figure()
             plt.title("phase graph"+file_path)
-            plt.xlabel("time(us)")
+            plt.xlabel("time(ms)")
             plt.ylabel("phase(rad)")
             for epc in epcs:
                 indexes=np.where(data[:,0]==epc)
                 epcData=data[indexes,:][0]
-                x= np.transpose(epcData[:,1])
+                x= np.transpose(epcData[:,1]) /1000
                 y=np.transpose(epcData[:,3])
-                plt.plot(x,y,label=str(int(epc)))
+                plt.plot(x,y,'ob-',color='red',label=str(int(epc)))
             plt.legend()
             # plt.savefig(file_path+"_phase.png")
             # plt.show()
