@@ -127,7 +127,7 @@ def segment(data, window_size=10, threshold=0.03, consecutiveCount=15):
             currentConsecutive = 0
         if (currentConsecutive > consecutiveCount):
             activeIndexes += range(i - window_size, i)
-    activeIndexes = list(set(range(data.size)) - set(activeIndexes))
+    activeIndexes = list(set(range(data.size)) - set(activeIndexes)-set(range(0,150)))
     activeIndexes.sort()
     return activeIndexes
 
@@ -145,7 +145,7 @@ def rotatingBrokenRegion(data, RSSILowThreshold=-66, maxTimeThreshold=200):
 def testPreprocess():
     filepath = unicode("../data/lab-2018-4-20/h2.csv", "utf8")
     data = getData(filepath)
-    ImageUtils.draw_phase_diagram(filepath)
+    # ImageUtils.draw_phase_diagram(filepath)
     preprocessedData = preprocess(data)
     rotatingRegion = rotatingBrokenRegion(data[:, [1, 2]])
     epcActiveDict = {}
@@ -154,7 +154,6 @@ def testPreprocess():
         # 通过 RSSI 判断是旋转还是垂直运动
         activeIndexes = segment(dataOfEpc)
         epcActiveDict[epc] = activeIndexes
-        plt.plot(range(dataOfEpc.size), dataOfEpc.tolist(), label=str(epc))
         # plt.plot(range(activeIndexes.__len__()),activeIndexes,label=str(epc)+" KL")
 
     for epc in preprocessedData.keys():
@@ -162,15 +161,15 @@ def testPreprocess():
         dataOfEpc = preprocessedData[epc][:, 1]
         activeIndexes = epcActiveDict[epc]
         activePhaseData = dataOfEpc[activeIndexes]
-        plt.figure()
-        plt.title("active position")
-        plt.plot(activeIndexes, activePhaseData)
-
         if (rotatingRegion.size == 0):
             verticalInitialState = np.array([0, 0, 0.1]).T
             verticalAntennaPos = np.asarray([[0, 1.0, 0.856]])
             verticalPhaseData = activePhaseData
             verticalEKF = VerticalEKF(verticalInitialState, verticalAntennaPos, verticalPhaseData)
+            result=verticalEKF.getResult()
+            plt.figure()
+            plt.plot(result)
+            plt.show()
         else:
             # 圆周运动
             rotatingInitialState = np.array([0, 0, 0.1]).T
@@ -192,20 +191,25 @@ def testPreprocess():
             if (delta >= 0):
                 trueRadius=(-b-np.sqrt(delta))/(2*a)
                 print 'trueRadius= ',trueRadius
+                rotatingEKF=RotatingEKF(rotatingInitialState, rotatingAntennaPos, rotatingPhaseData, trueRadius)
+                trueRadiusAngleResult=rotatingEKF.getResult();
+                plt.figure()
+                plt.plot(trueRadiusAngleResult)
+                plt.show()
             p1 = np.poly1d(z1)
             yvals = p1(rotatingRadiuses)
 
-            plt.figure()
-            plt.plot(rotatingRadiuses, radiuses, '*', label='estimated point')
-            plt.plot(rotatingRadiuses, yvals, 'r', label='fitting line')
-            plt.xlabel('radius')
-            plt.ylabel('maximum alpha')
-            fig=plt.gcf()
-            fig.set_size_inches(3.3492706944445,3.3492706944445/2)
+            # plt.figure()
+            # plt.plot(rotatingRadiuses, radiuses, '*', label='estimated point')
+            # plt.plot(rotatingRadiuses, yvals, 'r', label='fitting line')
+            # plt.xlabel('radius')
+            # plt.ylabel('maximum alpha')
+            # fig=plt.gcf()
+            # fig.set_size_inches(3.3492706944445,3.3492706944445/2)
             # plt.show()
-            plt.savefig("fitting.pdf",
-                        dpi=1000,
-                        bbox_inches='tight',)
+            # plt.savefig("recognition-accuracy.pdf",
+            #             dpi=1000,
+            #             bbox_inches='tight',)
             pass
 
     return
