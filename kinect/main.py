@@ -4,7 +4,7 @@
 import numpy as np
 import pylab as pl
 import matplotlib.pyplot as plt
-filename=unicode("../kinect_data/v2.txt","utf8")
+filename=unicode("../data/circular/fast/c2.txt","utf8")
 file_content = np.loadtxt(filename,delimiter=' ')
 x=file_content[:,0]
 x=x-x[0]
@@ -13,5 +13,6 @@ plt.figure()
 plt.plot(x, y, label="Y")
 plt.plot(x,file_content[:,1],label="X")
 plt.plot(x,file_content[:,3],label="Z")
+
 plt.legend()
 plt.show()

@@ -20,7 +20,7 @@ plt.xlabel('relative error')
 plt.ylabel('cumulative probability')
 plt.legend()
 fig=plt.gcf()
-fig.set_size_inches(3.3492706944445,3.3492706944445/2)
+fig.set_size_inches(7.0318750000001*0.3,7.0318750000001*0.3/2)
 # plt.show()
 plt.savefig("rotating-cdf.pdf",
             dpi=1000,

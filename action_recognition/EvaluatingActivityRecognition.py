@@ -84,6 +84,8 @@ def main():
     # plt.figure()
     # plt.scatter(thresholds,accurateRates)
     # plt.show()
+    print thresholds
+    print accurateRates
     plt.figure()
     plt.plot(thresholds, accurateRates)
     plt.xlabel('RSSI threshold')
